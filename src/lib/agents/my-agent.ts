@@ -1,39 +1,26 @@
 /**
  * My Agent Configuration
  *
- * This is an example agent with tool handlers and resources.
+ * This is an example agent with tool handlers.
  * Customize this file to match your agent's protocol.yaml.
  */
 
-import { Resource, type ToolHandlers } from '@octavus/server-sdk';
+import { z } from 'zod';
+import type { ToolHandlers } from '@octavus/server-sdk';
 import type { AgentConfig } from './types';
 
 // =============================================================================
-// Helpers
+// Tool Argument Schemas
 // =============================================================================
 
-function safeString(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  return '';
-}
+const getUserAccountSchema = z.object({
+  userId: z.string(),
+});
 
-// =============================================================================
-// Resources
-// =============================================================================
-
-/**
- * Example resource for storing conversation summaries.
- * In a real app, this would persist to a database.
- */
-class ConversationSummaryResource extends Resource {
-  readonly name = 'CONVERSATION_SUMMARY';
-
-  onUpdate(value: unknown): void {
-    console.log(`[Resource Update] ${this.name}:`, value);
-    // TODO: Persist to database, send webhook, etc.
-  }
-}
+const createSupportTicketSchema = z.object({
+  summary: z.string(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']),
+});
 
 // =============================================================================
 // Tool Handlers
@@ -45,13 +32,12 @@ const tools: ToolHandlers = {
    * Replace with your actual API/database calls.
    */
   'get-user-account': async (args) => {
-    const userId = safeString(args.userId);
-    console.log(`[Tool Call] get-user-account: userId=${userId}`);
+    const { userId } = getUserAccountSchema.parse(args);
+    console.log('[get-user-account]', { userId });
 
     // Simulate API/database latency
     await new Promise<void>((resolve) => setTimeout(resolve, 500));
 
-    // TODO: Replace with actual account lookup
     return {
       name: 'Demo User',
       email: 'demo@example.com',
@@ -65,14 +51,12 @@ const tools: ToolHandlers = {
    * Replace with your actual ticketing system integration.
    */
   'create-support-ticket': async (args) => {
-    const summary = safeString(args.summary);
-    const priority = safeString(args.priority);
-    console.log(`[Tool Call] create-support-ticket: summary=${summary}, priority=${priority}`);
+    const { summary, priority } = createSupportTicketSchema.parse(args);
+    console.log('[create-support-ticket]', { summary, priority });
 
     // Simulate API latency
     await new Promise<void>((resolve) => setTimeout(resolve, 300));
 
-    // TODO: Replace with actual ticket creation
     const ticketId = `TKT-${Date.now().toString(36).toUpperCase()}`;
     return {
       ticketId,
@@ -93,5 +77,4 @@ const tools: ToolHandlers = {
 export const myAgentConfig: AgentConfig = {
   agentId: process.env.OCTAVUS_AGENT_ID ?? 'your-agent-id-here',
   tools,
-  resources: [new ConversationSummaryResource()],
 };

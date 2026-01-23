@@ -12,13 +12,6 @@ input:
     description: The current user's ID
     optional: true
 
-# Resources - persisted state the agent can read and write
-resources:
-  CONVERSATION_SUMMARY:
-    type: string
-    description: Running summary of the conversation
-    default: ""
-
 # Triggers - how the agent can be invoked
 triggers:
   user-message:
@@ -63,8 +56,10 @@ agent:
   tools:
     - get-user-account
     - create-support-ticket
+  imageModel: google/gemini-3-pro-image-preview
   agentic: true
   maxSteps: 10
+  thinking: medium
 
 # Handlers - what happens when triggers fire
 handlers:

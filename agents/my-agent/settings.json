@@ -1,0 +1,6 @@
+{
+  "slug": "my-agent",
+  "name": "My Agent",
+  "description": "A simple chat agent with tools and image generation to get you started.",
+  "format": "interactive"
+}
