@@ -13,15 +13,24 @@ export default async function ChatPage({ params }: ChatPageProps) {
     notFound();
   }
 
-  // Validate session exists by fetching it
   const client = getOctavusClient();
 
   let session;
   try {
-    session = await client.agentSessions.get(sessionId);
+    session = await client.agentSessions.getMessages(sessionId);
   } catch {
     notFound();
   }
 
-  return <ChatInterface sessionId={sessionId} agentId={session.agentId} />;
+  if (session.status === 'expired') {
+    notFound();
+  }
+
+  return (
+    <ChatInterface
+      sessionId={sessionId}
+      agentId={session.agentId}
+      initialMessages={session.messages}
+    />
+  );
 }
