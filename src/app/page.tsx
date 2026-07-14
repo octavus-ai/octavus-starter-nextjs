@@ -28,7 +28,7 @@ export default function HomePage() {
           <FeatureCard
             icon={<Code2 className="h-6 w-6" />}
             title="Extensible"
-            description="Add custom tools, resources, and object renderers"
+            description="Add custom tools, client tools, and object renderers"
           />
         </div>
       </div>

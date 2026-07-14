@@ -60,16 +60,11 @@ export function ChatInterface({
   const transport = useMemo(
     () =>
       createHttpTransport({
-        triggerRequest: (triggerName, input, options) =>
+        request: (payload, options) =>
           fetch('/api/trigger', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId,
-              agentId,
-              triggerName,
-              input,
-            }),
+            body: JSON.stringify({ sessionId, agentId, ...payload }),
             signal: options?.signal,
           }),
       }),

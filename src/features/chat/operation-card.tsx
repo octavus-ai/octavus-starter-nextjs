@@ -9,7 +9,7 @@ interface OperationCardProps {
 }
 
 /**
- * Displays internal Octavus operations like set-resource, serialize-thread.
+ * Displays internal Octavus operations like serialize-thread.
  */
 export function OperationCard({ operation }: OperationCardProps) {
   const isRunning = operation.status === 'running';

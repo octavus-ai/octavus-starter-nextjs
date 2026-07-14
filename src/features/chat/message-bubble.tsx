@@ -162,7 +162,7 @@ interface PartRendererProps {
 
 function PartRenderer({ part, isFirst, onSuggestionClick, objectRenderers }: PartRendererProps) {
   // Skip "other thread" parts for simpler starter template
-  if (isOtherThread(part)) return null;
+  if ('thread' in part && isOtherThread(part)) return null;
 
   switch (part.type) {
     case 'text':

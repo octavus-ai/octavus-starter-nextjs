@@ -7,7 +7,7 @@ A minimal Next.js starter template for building agentic applications with [Octav
 - **Streaming Chat** - Real-time streaming responses with thinking blocks, tool calls, and file attachments
 - **File Uploads** - Upload images and documents directly in the chat interface
 - **Error Handling** - User-friendly error display with retry information
-- **Extensible** - Add custom tools, resources, and object renderers
+- **Extensible** - Add custom tools, client tools, and object renderers
 
 ## Quick Start
 
@@ -115,26 +115,23 @@ const tools: ToolHandlers = {
 
 Make sure the tool is defined in your agent's `protocol.yaml`.
 
-### Adding Resources
+### Client Tools
 
-Resources persist state across the session:
+Tools run on your server by default. To handle a tool in the browser instead, register it in `clientTools` on `useOctavusChat`. Any tool the agent calls that has no server-side handler is forwarded to the client:
 
 ```typescript
-class MyResource extends Resource {
-  readonly name = 'MY_RESOURCE';
-
-  onUpdate(value: unknown): void {
-    // Handle resource updates (save to DB, send webhook, etc.)
-    console.log('Resource updated:', value);
-  }
-}
-
-export const myAgentConfig: AgentConfig = {
-  slug: 'my-agent',
-  tools,
-  resources: [new MyResource()],
-};
+const { messages, send } = useOctavusChat({
+  transport,
+  clientTools: {
+    'my-client-tool': (args) => {
+      // Runs in the browser - read the DOM, prompt the user, etc.
+      return Promise.resolve({ ok: true });
+    },
+  },
+});
 ```
+
+Define the tool in your agent's `protocol.yaml` with no server handler, and the SDK forwards its calls to the browser.
 
 ### Styling
 
