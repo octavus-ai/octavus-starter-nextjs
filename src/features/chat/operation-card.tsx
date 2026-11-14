@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, Loader2, Settings2, Ban } from 'lucide-react';
-import type { UIOperationPart } from '@octavus/react';
+import { getPartLabel, type UIOperationPart } from '@octavus/react';
 import { cn } from '@/lib/utils';
 
 interface OperationCardProps {
@@ -9,7 +9,8 @@ interface OperationCardProps {
 }
 
 /**
- * Displays internal Octavus operations like serialize-thread.
+ * Displays Octavus operations like generate-image.
+ * The label is the block's authored title, else its name.
  */
 export function OperationCard({ operation }: OperationCardProps) {
   const isRunning = operation.status === 'running';
@@ -20,7 +21,7 @@ export function OperationCard({ operation }: OperationCardProps) {
       <div className="flex w-full items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
           <Settings2 className={cn('h-4 w-4 text-slate-400', isRunning && 'animate-pulse')} />
-          <span className="text-sm text-slate-400">{operation.name}</span>
+          <span className="text-sm text-slate-400">{getPartLabel(operation)}</span>
           {isCancelled && <span className="text-xs text-amber-400">(cancelled)</span>}
         </div>
         <div className="flex items-center gap-2">

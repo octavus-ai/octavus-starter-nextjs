@@ -12,6 +12,13 @@ input:
     description: The current user's ID
     optional: true
 
+# Types - reusable parameter shapes
+types:
+  TicketPriority:
+    type: string
+    enum: [low, medium, high, urgent]
+    description: How urgently the ticket needs attention
+
 # Triggers - how the agent can be invoked
 triggers:
   user-message:
@@ -26,29 +33,32 @@ triggers:
         description: Documents or images for analysis (PDFs, images, text files)
 
 # Tools - provided by your application
+# `title` is the label the user sees; `description` is written for the model.
 tools:
   get-user-account:
-    description: Looking up account information
-    display: description
+    display: title
+    title: Looking up your account
+    description: Look up the user's account - name, email, plan, and signup date - by user ID.
     parameters:
       userId:
         type: string
         description: The user ID to look up
 
   create-support-ticket:
-    description: Creating a support ticket
-    display: description
+    display: title
+    title: Creating a support ticket
+    description: Create a support ticket for an issue you cannot resolve in the conversation.
     parameters:
       summary:
         type: string
         description: Summary of the issue
       priority:
-        type: string
-        description: "Priority level: low, medium, high, urgent"
+        type: TicketPriority
+        description: Priority level of the ticket
 
 # Agent configuration
 agent:
-  model: anthropic/claude-sonnet-4-5
+  model: anthropic/claude-sonnet-5-5
   system: system
   input:
     - COMPANY_NAME
@@ -56,7 +66,7 @@ agent:
   tools:
     - get-user-account
     - create-support-ticket
-  imageModel: google/gemini-3-pro-image-preview
+  imageModel: google/gemini-3-pro-image
   agentic: true
   maxSteps: 10
   thinking: medium

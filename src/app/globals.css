@@ -1,6 +1,7 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+@custom-variant dark (&:is(.dark *));
 
 @layer base {
   * {
@@ -15,6 +16,12 @@
   body {
     @apply bg-slate-950 text-slate-100;
     overscroll-behavior: none;
+  }
+
+  /* Tailwind CSS 4's preflight leaves buttons on the default cursor */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
   }
 }
 
