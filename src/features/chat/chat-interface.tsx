@@ -1,17 +1,19 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Paperclip, X, Loader2, AlertCircle, Square, Send } from 'lucide-react';
+import { Paperclip, X, Loader2, AlertCircle, Square, Send, RotateCcw } from 'lucide-react';
 import {
   useOctavusChat,
+  useAutoScroll,
   createHttpTransport,
   isRateLimitError,
+  isQuotaExceededError,
   isAuthenticationError,
   isProviderError,
+  OctavusError,
   type UIMessage,
   type FileReference,
   type UploadUrlsResponse,
-  type OctavusError,
 } from '@octavus/react';
 import { cn } from '@/lib/utils';
 
@@ -47,7 +49,6 @@ export function ChatInterface({
 }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState('');
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,42 +79,53 @@ export function ChatInterface({
       const response = await fetch('/api/upload-urls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, files }),
+        body: JSON.stringify({ files }),
       });
       if (!response.ok) {
-        throw new Error('Failed to get upload URLs');
+        const body: unknown = await response.json().catch(() => undefined);
+        throw OctavusError.fromApiResponse(response.status, body, 'Failed to get upload URLs');
       }
       return await (response.json() as Promise<UploadUrlsResponse>);
     },
-    [sessionId]
+    []
   );
 
-  const { messages, status, error, send, stop, uploadFiles } = useOctavusChat({
+  const { messages, status, error, send, stop, retry, canRetry, uploadFiles } = useOctavusChat({
     transport,
     requestUploadUrls,
     initialMessages,
+    // Render provider bursts as steady typing
+    textSmoothing: true,
     onError: (err: OctavusError) => {
       console.error('[Octavus Error]', {
         type: err.errorType,
         message: err.message,
         source: err.source,
+        code: err.code,
         retryable: err.retryable,
+        requestId: err.requestId,
       });
     },
   });
 
+  const {
+    scrollRef,
+    contentRef,
+    handleScroll,
+    handleWheel,
+    handleTouchStart,
+    handleTouchMove,
+    scrollOnUpdate,
+    resetAutoScroll,
+  } = useAutoScroll();
+
   const isStreaming = status === 'streaming';
 
-  // Auto-scroll to bottom when messages change
+  // Follow new content unless the user has scrolled up to read
   useEffect(() => {
-    const scrollToBottom = () => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-    };
-    const frameId = requestAnimationFrame(scrollToBottom);
+    const frameId = requestAnimationFrame(scrollOnUpdate);
     return () => cancelAnimationFrame(frameId);
-  }, [messages]);
+  }, [messages, scrollOnUpdate]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -142,6 +154,7 @@ export function ChatInterface({
       }
     });
     setPendingFiles([]);
+    resetAutoScroll();
 
     await send(
       'user-message',
@@ -217,9 +230,9 @@ export function ChatInterface({
   }
 
   return (
-    <main className="chat-container flex h-screen flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <main className="chat-container flex h-screen flex-col bg-linear-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/50 px-4 py-3 backdrop-blur">
+      <header className="border-b border-slate-800 bg-slate-900/50 px-4 py-3 backdrop-blur-sm">
         <div className="mx-auto flex max-w-4xl items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="font-medium text-white">Chat</span>
@@ -239,8 +252,15 @@ export function ChatInterface({
       </header>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4">
-        <div className="mx-auto max-w-4xl py-6">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        className="flex-1 overflow-y-auto px-4"
+      >
+        <div ref={contentRef} className="mx-auto max-w-4xl py-6">
           {messages.length === 0 && (
             <div className="py-12 text-center text-slate-500">
               Start a conversation with the agent
@@ -260,16 +280,18 @@ export function ChatInterface({
           {error && (
             <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-4">
               <div className="flex items-start gap-3">
-                <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-400" />
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-red-400">
                     {isRateLimitError(error)
                       ? 'Service is temporarily busy'
-                      : isAuthenticationError(error)
-                        ? 'Service configuration error'
-                        : isProviderError(error)
-                          ? 'AI service temporarily unavailable'
-                          : 'Something went wrong'}
+                      : isQuotaExceededError(error)
+                        ? 'Usage limit reached'
+                        : isAuthenticationError(error)
+                          ? 'Service configuration error'
+                          : isProviderError(error)
+                            ? 'AI service temporarily unavailable'
+                            : 'Something went wrong'}
                   </p>
                   <p className="mt-1 text-xs text-red-400/70">{error.message}</p>
 
@@ -279,6 +301,16 @@ export function ChatInterface({
                     </p>
                   )}
                 </div>
+                {canRetry && (
+                  <button
+                    type="button"
+                    onClick={() => void retry()}
+                    className="flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/20"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    <span>Retry</span>
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -286,7 +318,7 @@ export function ChatInterface({
       </div>
 
       {/* Input */}
-      <div className="border-t border-slate-800 bg-slate-900/50 px-4 py-4 backdrop-blur">
+      <div className="border-t border-slate-800 bg-slate-900/50 px-4 py-4 backdrop-blur-sm">
         <div className="mx-auto max-w-4xl">
           {/* Pending files preview */}
           {pendingFiles.length > 0 && (
@@ -308,14 +340,14 @@ export function ChatInterface({
                         src={pendingFile.previewUrl}
                         alt={pendingFile.file.name}
                         className={cn(
-                          'h-10 w-10 rounded object-cover',
+                          'h-10 w-10 rounded-sm object-cover',
                           pendingFile.status === 'uploading' && 'opacity-50'
                         )}
                       />
                     ) : (
                       <div
                         className={cn(
-                          'flex h-10 w-10 items-center justify-center rounded bg-slate-700 text-xs text-slate-400',
+                          'flex h-10 w-10 items-center justify-center rounded-sm bg-slate-700 text-xs text-slate-400',
                           pendingFile.status === 'uploading' && 'opacity-50'
                         )}
                       >
@@ -385,7 +417,7 @@ export function ChatInterface({
               placeholder="Type your message..."
               disabled={isStreaming}
               rows={1}
-              className="chat-input min-h-[42px] max-h-32 flex-1 resize-none rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50"
+              className="chat-input min-h-[42px] max-h-32 flex-1 resize-none rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 disabled:opacity-50"
             />
 
             {isStreaming ? (

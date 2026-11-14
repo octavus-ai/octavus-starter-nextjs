@@ -72,7 +72,7 @@ const tools: ToolHandlers = {
 /**
  * Agent configuration for "my-agent".
  * Replace the agentId with your actual agent ID from the Octavus platform.
- * You can find this in the agent settings or by running: octavus agents list
+ * You can find this in the agent settings or by running: npx octavus list
  */
 export const myAgentConfig: AgentConfig = {
   agentId: process.env.OCTAVUS_AGENT_ID ?? 'your-agent-id-here',

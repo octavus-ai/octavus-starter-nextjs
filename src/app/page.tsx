@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { MessageSquare, Zap, Code2 } from 'lucide-react';
 import { getOctavusClient } from '@/lib/octavus';
 import { getDefaultAgentId } from '@/lib/server-config';
@@ -5,7 +6,7 @@ import { StartChatButton } from './start-chat-button';
 
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 px-4">
       <div className="mx-auto max-w-2xl text-center">
         <h1 className="mb-4 text-4xl font-bold text-white">Octavus Starter</h1>
         <p className="mb-8 text-lg text-slate-400">
@@ -44,13 +45,12 @@ async function StartChatForm() {
     const agentId = getDefaultAgentId();
 
     // Create a new session with the agent
-    const sessionId = await client.agentSessions.create(agentId, {
+    const { id: sessionId } = await client.sessions.create(agentId, {
       COMPANY_NAME: 'Acme Inc',
       USER_ID: 'user-123',
     });
 
     // Redirect to the chat page
-    const { redirect } = await import('next/navigation');
     redirect(`/chat/${sessionId}`);
   }
 

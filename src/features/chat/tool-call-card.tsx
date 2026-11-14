@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, X, Loader2, Wrench, Ban } from 'lucide-react';
-import type { UIToolCallPart } from '@octavus/react';
+import { getPartLabel, type UIToolCallPart } from '@octavus/react';
 import { cn } from '@/lib/utils';
 
 interface ToolCallCardProps {
@@ -10,9 +10,9 @@ interface ToolCallCardProps {
 
 /**
  * Displays the status of a tool call (pending, running, done, error, cancelled).
+ * The label is the tool's authored title, else one derived from its name.
  */
 export function ToolCallCard({ toolCall }: ToolCallCardProps) {
-  const displayText = toolCall.displayName || toolCall.toolName;
   const isRunning = toolCall.status === 'pending' || toolCall.status === 'running';
   const isCancelled = toolCall.status === 'cancelled';
 
@@ -21,7 +21,7 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
       <div className="flex w-full items-center justify-between px-3 py-2 text-left">
         <div className="flex items-center gap-2">
           <Wrench className={cn('h-4 w-4 text-slate-400', isRunning && 'animate-pulse')} />
-          <span className="text-sm text-slate-400">{displayText}</span>
+          <span className="text-sm text-slate-400">{getPartLabel(toolCall)}</span>
           {isCancelled && <span className="text-xs text-amber-400">(cancelled)</span>}
         </div>
         <div className="flex items-center gap-2">

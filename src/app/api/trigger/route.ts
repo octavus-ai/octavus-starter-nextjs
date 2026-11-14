@@ -12,10 +12,10 @@ import { getOctavusClient } from '@/lib/octavus';
 import { getAgentConfig } from '@/lib/agents';
 
 /**
- * Tool results echoed back on continuation. Mirrors the SDK's `ToolResult` so
- * every field survives the round-trip - most importantly `error` (set when a
- * client tool is cancelled or throws) and the worker/thread routing fields -
- * rather than being silently dropped by validation.
+ * Client tool results sent on continuation, in the SDK's `ToolResult` shape.
+ * The platform routes each result by the call it issued, so a result names
+ * only its `toolCallId`, with a `result` (or the `error` a cancelled or failed
+ * client tool reports) and any files it produced.
  */
 const fileReferenceSchema = z.object({
   id: z.string(),
@@ -23,18 +23,15 @@ const fileReferenceSchema = z.object({
   url: z.string(),
   filename: z.string().optional(),
   size: z.number().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
 });
 
 const toolResultSchema = z.object({
   toolCallId: z.string().min(1),
-  toolName: z.string().optional(),
   result: z.unknown().optional(),
   error: z.string().optional(),
   files: z.array(fileReferenceSchema).optional(),
-  outputVariable: z.string().optional(),
-  blockIndex: z.number().optional(),
-  thread: z.string().optional(),
-  workerId: z.string().optional(),
 });
 
 /** Trigger a new agent turn */
@@ -79,7 +76,7 @@ export async function POST(request: NextRequest) {
       return Response.json(
         {
           error: 'Invalid request body',
-          details: parsed.error.flatten().fieldErrors,
+          details: z.flattenError(parsed.error).fieldErrors,
         },
         { status: 400 }
       );
@@ -93,7 +90,7 @@ export async function POST(request: NextRequest) {
     const agentConfig = getAgentConfig(agentId);
 
     // Attach to session with agent-specific tools
-    const session = client.agentSessions.attach(sessionId, {
+    const session = client.sessions.attach(sessionId, {
       tools: agentConfig?.tools ?? {},
     });
 
@@ -107,6 +104,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
       },
     });
   } catch (error) {
